@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from shapely import wkt
@@ -13,52 +12,60 @@ st.title("🗺️ Konversi WKT Polygon ke KML")
 uploaded_file = st.file_uploader("Unggah file Excel (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
-    # Baca file Excel
+    # Baca isi file
     df = pd.read_excel(uploaded_file)
-    st.success("File berhasil dibaca. Berikut isi datanya:")
+    st.success("✅ File berhasil dibaca.")
     st.dataframe(df)
 
-    # Periksa kolom penting
-    if "Polygon dalam Format WKT" not in df.columns:
-        st.error("Kolom 'Polygon dalam Format WKT' tidak ditemukan di file Excel.")
-    else:
-        # Tombol untuk generate KML
-        if st.button("🔄 Konversi ke KML"):
-            kml = simplekml.Kml()
-            error_rows = []
+    # Pilihan kolom
+    st.markdown("### 🔧 Pilih Kolom:")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        name_col = st.selectbox("📛 Kolom untuk Nama Polygon", options=df.columns)
+    with col2:
+        desc_col = st.selectbox("📝 Kolom untuk Deskripsi", options=df.columns)
+    with col3:
+        wkt_col = st.selectbox("📐 Kolom untuk WKT Polygon", options=df.columns)
 
-            for idx, row in df.iterrows():
-                try:
-                    polygon_wkt = row["Polygon dalam Format WKT"]
-                    odc_name = str(row["ODC"]) if "ODC" in row else f"Polygon_{idx+1}"
-                    geom = wkt.loads(polygon_wkt)
+    # Tombol konversi
+    if st.button("🔄 Konversi ke KML"):
+        kml = simplekml.Kml()
+        error_rows = []
 
-                    if geom.geom_type == "Polygon":
-                        coords = [(lon, lat) for lon, lat in geom.exterior.coords]
-                        pol = kml.newpolygon(name=odc_name, outerboundaryis=coords)
-                        pol.style.polystyle.color = simplekml.Color.changealphaint(100, simplekml.Color.blue)
-                        pol.style.linestyle.color = simplekml.Color.blue
-                        pol.style.linestyle.width = 2
-                    else:
-                        error_rows.append(idx)
-                except Exception as e:
+        for idx, row in df.iterrows():
+            try:
+                polygon_wkt = row[wkt_col]
+                polygon_name = str(row[name_col])
+                polygon_desc = str(row[desc_col])
+                geom = wkt.loads(polygon_wkt)
+
+                if geom.geom_type == "Polygon":
+                    coords = [(lon, lat) for lon, lat in geom.exterior.coords]
+                    pol = kml.newpolygon(name=polygon_name, outerboundaryis=coords)
+                    pol.description = polygon_desc
+                    pol.style.polystyle.color = simplekml.Color.changealphaint(100, simplekml.Color.blue)
+                    pol.style.linestyle.color = simplekml.Color.blue
+                    pol.style.linestyle.width = 2
+                else:
                     error_rows.append(idx)
+            except Exception as e:
+                error_rows.append(idx)
 
-            # Simpan ke file sementara, lalu baca isinya sebagai byte
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-                kml.save(tmp.name)
-                tmp.seek(0)
-                kml_bytes = tmp.read()
+        # Simpan KML ke file sementara
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
+            kml.save(tmp.name)
+            tmp.seek(0)
+            kml_bytes = tmp.read()
 
-            st.success("File KML berhasil dibuat!")
+        st.success("🎉 File KML berhasil dibuat!")
 
-            # Tombol download
-            st.download_button(
-                label="⬇️ Download KML",
-                data=kml_bytes,
-                file_name="output_polygon.kml",
-                mime="application/vnd.google-earth.kml+xml"
-            )
+        st.download_button(
+            label="⬇️ Download KML",
+            data=kml_bytes,
+            file_name="output_polygon.kml",
+            mime="application/vnd.google-earth.kml+xml"
+        )
 
-            if error_rows:
-                st.warning(f"{len(error_rows)} baris gagal dikonversi (bukan Polygon atau error lainnya).")
+        if error_rows:
+            st.warning(f"⚠️ {len(error_rows)} baris gagal dikonversi (bukan Polygon atau error lainnya).")
