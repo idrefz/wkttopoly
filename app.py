@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 from shapely import wkt
 import simplekml
-import io
+import tempfile
 
 st.set_page_config(page_title="WKT to KML Converter", layout="wide")
 
@@ -44,14 +44,15 @@ if uploaded_file is not None:
                 except Exception as e:
                     error_rows.append(idx)
 
-            # Simpan ke file sementara (in-memory)
-            kml_bytes = io.BytesIO()
-            kml.save(kml_bytes)
-            kml_bytes.seek(0)
+            # Simpan ke file sementara, lalu baca isinya sebagai byte
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
+                kml.save(tmp.name)
+                tmp.seek(0)
+                kml_bytes = tmp.read()
 
             st.success("File KML berhasil dibuat!")
 
-            # Download button
+            # Tombol download
             st.download_button(
                 label="⬇️ Download KML",
                 data=kml_bytes,
@@ -59,6 +60,5 @@ if uploaded_file is not None:
                 mime="application/vnd.google-earth.kml+xml"
             )
 
-            # Tampilkan error jika ada
             if error_rows:
                 st.warning(f"{len(error_rows)} baris gagal dikonversi (bukan Polygon atau error lainnya).")
