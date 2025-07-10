@@ -3,3 +3,4 @@ pandas
 shapely
 simplekml
 openpyxl
+fastkml
