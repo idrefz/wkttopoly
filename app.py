@@ -79,8 +79,8 @@ elif mode == "KML ke WKT":
             k.from_string(kml_content)
             wkt_data = []
 
-            for feature in list(k.features()):
-                for placemark in list(feature.features()):
+            for feature in list(k.features):
+                for placemark in list(feature.features):
                     if hasattr(placemark, 'geometry') and isinstance(placemark.geometry, Polygon):
                         name = placemark.name
                         desc = placemark.description or ""
